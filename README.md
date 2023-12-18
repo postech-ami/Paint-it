@@ -2,6 +2,12 @@
 ### [Project Page](https://kim-youwang.github.io/paint-it) | [Paper](https://kim-youwang.github.io/paint-it)
 Code will be released soon.<br><br>
 
+<img width="960" alt="teaser_blender_v2" src="https://github.com/postech-ami/paint-it/assets/55628873/58b49435-dc2b-4c97-9245-4b1ba14cb9ee">
+
+https://github.com/postech-ami/paint-it/assets/55628873/2c055a6d-355b-4c14-a996-fd95f2b319be
+
+
+
 
 ## Citation
 If you find our code or paper helps, please consider citing:
