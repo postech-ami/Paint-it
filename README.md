@@ -1,4 +1,4 @@
-# paint-it
+# Paint-it
 ### [Project Page](https://kim-youwang.github.io/paint-it) | [Paper](https://kim-youwang.github.io/paint-it)
 Code will be released soon.<br><br>
 
@@ -19,6 +19,11 @@ If you find our code or paper helps, please consider citing:
   year      = {2023},
 }
 ````
+
+
+## Contact
+Kim Youwang (youwang.kim@postech.ac.kr)
+
 
 ## Acknowledgement
 We thank the members of AMILab and RVH group for their helpful discussions and proofreading. 
