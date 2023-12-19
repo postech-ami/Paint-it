@@ -12,11 +12,14 @@ https://github.com/postech-ami/paint-it/assets/55628873/2c055a6d-355b-4c14-a996-
 ## Citation
 If you find our code or paper helps, please consider citing:
 ````BibTeX
-@article{youwang2023paintit,
-  author    = {Youwang, Kim and Oh, Tae-Hyun and Pons-Moll, Gerard},
-  title     = {Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering},
-  journal   = {arXiv preprint, arXiv:????},
-  year      = {2023},
+@misc{
+  youwang2023paintit,
+  title={Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering}, 
+  author={Kim Youwang and Tae-Hyun Oh and Gerard Pons-Moll},
+  year={2023},
+  eprint={2312.11360},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV}
 }
 ````
 
