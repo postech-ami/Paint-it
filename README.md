@@ -1,6 +1,6 @@
 # Paint-it
 ### [Project Page](https://kim-youwang.github.io/paint-it) | [Paper](https://arxiv.org/abs/2312.11360)
-Code will be released soon.<br><br>
+Code will be released soon (during March!).<br><br>
 
 <img width="960" alt="teaser_blender_v2" src="https://github.com/postech-ami/paint-it/assets/55628873/58b49435-dc2b-4c97-9245-4b1ba14cb9ee">
 
@@ -12,14 +12,12 @@ https://github.com/postech-ami/paint-it/assets/55628873/2c055a6d-355b-4c14-a996-
 ## Citation
 If you find our code or paper helps, please consider citing:
 ````BibTeX
-@misc{
-  youwang2023paintit,
-  title={Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering}, 
-  author={Kim Youwang and Tae-Hyun Oh and Gerard Pons-Moll},
-  year={2023},
-  eprint={2312.11360},
-  archivePrefix={arXiv},
-  primaryClass={cs.CV}
+@inproceedings{youwang2023paintit,
+    title = {Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering},
+    author = {Youwang, Kim and Oh, Tae-Hyun and Pons-Moll, Gerard},
+    booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month = {June},
+    year = {2024},
 }
 ````
 
