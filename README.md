@@ -42,7 +42,7 @@ pip install PyOpenGL PyOpenGL_accelerate accelerate rich ninja scipy trimesh ima
 pip install numpy==1.23.1
 ```
 
-### Preparing 3D Mesh data
+### Preparing 3D mesh data
 Currently, this repository contains a sample mesh from [Objaverse](https://objaverse.allenai.org/) dataset.
 To download a subset of Objaverse, you can refer to the scripts provided [here](https://github.com/daveredrum/Text2Tex?tab=readme-ov-file#benchmark-on-objaverse-subset).
 
