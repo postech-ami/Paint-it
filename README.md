@@ -1,7 +1,7 @@
 # Paint-it (CVPR 2024)
 ### [Project Page](https://kim-youwang.github.io/paint-it) | [Paper](https://arxiv.org/abs/2312.11360)
 This repository contains the official implementation of the CVPR 2024 paper, 
-"🎨Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering".
+"🎨 Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering".
 
 <img width="960" alt="teaser_camready" src="https://github.com/postech-ami/paint-it/assets/55628873/e7069c3d-3fdf-4e01-b8dc-7e8a8f14d072">
 
