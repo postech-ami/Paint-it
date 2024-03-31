@@ -71,7 +71,7 @@ mesh_dicts = {
 ## Citation
 If you find our code or paper helps, please consider citing:
 ````BibTeX
-@inproceedings{youwang2023paintit,
+@inproceedings{youwang2024paintit,
     title = {Paint-it: Text-to-Texture Synthesis via Deep Convolutional Texture Map Optimization and Physically-Based Rendering},
     author = {Youwang, Kim and Oh, Tae-Hyun and Pons-Moll, Gerard},
     booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
