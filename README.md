@@ -6,7 +6,7 @@ This repository contains the official implementation of the CVPR 2024 paper,
 <img width="960" alt="teaser_camready" src="https://github.com/postech-ami/paint-it/assets/55628873/e7069c3d-3fdf-4e01-b8dc-7e8a8f14d072">
 
 ## Highlights
-Paint-it is a text-driven high-quality PBR texture map synthesis method. 
+**Paint-it is a text-driven high-quality PBR texture map synthesis method.** 
 
 🌟 Our texture maps are ready for practical use in popular graphics engines like Blender and Unity, thanks to our Physics-based Rendering (PBR) parameterization, which includes diffuse, roughness, metalness, and normal information.
 
