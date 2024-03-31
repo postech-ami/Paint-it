@@ -20,7 +20,7 @@ from nvdiff_render.texture import *
 from nvdiff_render.material import *
 from nvdiff_render.obj import *
 from utils import *
-from dip_models import skip
+from dc_pbr import skip
 from sd import StableDiffusion
 
 glctx = dr.RasterizeCudaContext()
