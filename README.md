@@ -51,7 +51,7 @@ To download a subset of Objaverse, you can refer to the scripts provided [here](
 Given a 3D mesh in `.obj` format and the text prompt, you can run below code to generate PBR texture maps.
 ```
 # Generate PBR textures for .obj meshes
-python generate_pbr.py
+python paint_it.py
 ```
 
 When generating PBR texture maps for a subset of Objaverse meshes, 
