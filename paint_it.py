@@ -232,8 +232,7 @@ def main(args, guidance):
         losses['L_sds'] = sd_loss.item()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=args.sd_max_grad_norm)
-        if args.learn_light:
-            torch.nn.utils.clip_grad_norm_(lgt.parameters(), max_norm=args.sd_max_grad_norm)
+
         optim.step()
         lr_scheduler.step()
 
@@ -314,7 +313,8 @@ if __name__ == '__main__':
 
     # iterate through the renderpeople items
     for obj_id, caption in mesh_dicts.items():
-        args.exp_name = '_'.join(([obj_id.split('_')[1], obj_id.split('_')[3]] + caption.split(' ')[1:]))
+        args.exp_name = '_'.join((caption.split(' ')[1:] + [obj_id[:6]]))
+        args.objaverse_id = obj_id
         args.obj_id = obj_id
         args.identity = caption
         main(args, guidance)
