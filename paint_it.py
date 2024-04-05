@@ -143,9 +143,7 @@ def main(args, guidance):
     input_uv_ = torch.randn((3, 512, 512), device=device)
 
     # scale input
-    input_uv = (input_uv_ - torch.mean(input_uv_, dim=(1, 2)).reshape(-1, 1, 1)) / torch.std(input_uv_,
-                                                                                             dim=(1, 2)).reshape(-1, 1,
-                                                                                                                 1)
+    input_uv = (input_uv_ - torch.mean(input_uv_, dim=(1, 2)).reshape(-1, 1, 1)) / torch.std(input_uv_, dim=(1, 2)).reshape(-1, 1, 1)
 
     network_input = copy.deepcopy(input_uv.unsqueeze(0))
 
@@ -161,15 +159,9 @@ def main(args, guidance):
         text_z.append(guidance.get_text_embeds([f"{sd_prompt}, {d} view"], [neg_prompt], 1))
     text_z = torch.stack(text_z, dim=0)
 
-    kd_min, kd_max = torch.tensor(args.kd_min, dtype=torch.float32, device='cuda'), torch.tensor(args.kd_max,
-                                                                                                 dtype=torch.float32,
-                                                                                                 device='cuda')
-    ks_min, ks_max = torch.tensor(args.ks_min, dtype=torch.float32, device='cuda'), torch.tensor(args.ks_max,
-                                                                                                 dtype=torch.float32,
-                                                                                                 device='cuda')
-    nrm_min, nrm_max = torch.tensor(args.nrm_min, dtype=torch.float32, device='cuda'), torch.tensor(args.nrm_max,
-                                                                                                    dtype=torch.float32,
-                                                                                                    device='cuda')
+    kd_min, kd_max = torch.tensor(args.kd_min, dtype=torch.float32, device='cuda'), torch.tensor(args.kd_max, dtype=torch.float32, device='cuda')
+    ks_min, ks_max = torch.tensor(args.ks_min, dtype=torch.float32, device='cuda'), torch.tensor(args.ks_max, dtype=torch.float32, device='cuda')
+    nrm_min, nrm_max = torch.tensor(args.nrm_min, dtype=torch.float32, device='cuda'), torch.tensor(args.nrm_max, dtype=torch.float32, device='cuda')
     nrm_t = get_template_normal()  # (512, 512, 3)
 
     # Main training loop
@@ -291,11 +283,9 @@ def main(args, guidance):
                     else:
                         torchvision.utils.save_image(final_obj_rgb[idx], os.path.join(output_dir, "final_top.png"))
                 if elev == 0.0:
-                    torchvision.utils.save_image(vis_mesh_img[idx],
-                                                 os.path.join(output_dir, 'view_front', f'{idx:04}.png'))
+                    torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, 'view_front', f'{idx:04}.png'))
                 else:
-                    torchvision.utils.save_image(vis_mesh_img[idx],
-                                                 os.path.join(output_dir, 'view_top', f'{idx:04}.png'))
+                    torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, 'view_top', f'{idx:04}.png'))
 
 
 if __name__ == '__main__':
