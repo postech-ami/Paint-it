@@ -315,6 +315,5 @@ if __name__ == '__main__':
     for obj_id, caption in mesh_dicts.items():
         args.exp_name = '_'.join((caption.split(' ')[1:] + [obj_id[:6]]))
         args.objaverse_id = obj_id
-        args.obj_id = obj_id
         args.identity = caption
         main(args, guidance)
