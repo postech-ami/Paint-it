@@ -55,7 +55,8 @@ python paint_it.py
 ```
 
 When generating PBR texture maps for a subset of Objaverse meshes, 
-you can modify below dictionary (generate_pbr.py, L305) to handle multiple mesh object IDs and corresponding text prompts.
+you can modify below dictionary (paint_it.py, L294) to handle multiple mesh object IDs and corresponding text prompts.
+
 
 ```
 mesh_dicts = {
