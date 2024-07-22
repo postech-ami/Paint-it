@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument('--envmap', type=str, default='data/irrmaps/mud_road_puresky_4k.hdr')
     parser.add_argument('--log_freq', type=int, default=100)
     parser.add_argument('--gd_scale', type=int, default=100)
+    parser.add_argument('--uv_res', type=int, default=512)
 
     args = parser.parse_args()
     args.kd_min = [0.0, 0.0, 0.0, 0.0]  # Limits for kd
@@ -140,7 +141,7 @@ def main(args, guidance):
     mesh_t = auto_normals(mesh_t)
     mesh_t = compute_tangents(mesh_t)
 
-    input_uv_ = torch.randn((3, 512, 512), device=device)
+    input_uv_ = torch.randn((3, args.uv_res, args.uv_res), device=device)
 
     # scale input
     input_uv = (input_uv_ - torch.mean(input_uv_, dim=(1, 2)).reshape(-1, 1, 1)) / torch.std(input_uv_, dim=(1, 2)).reshape(-1, 1, 1)
@@ -162,7 +163,7 @@ def main(args, guidance):
     kd_min, kd_max = torch.tensor(args.kd_min, dtype=torch.float32, device='cuda'), torch.tensor(args.kd_max, dtype=torch.float32, device='cuda')
     ks_min, ks_max = torch.tensor(args.ks_min, dtype=torch.float32, device='cuda'), torch.tensor(args.ks_max, dtype=torch.float32, device='cuda')
     nrm_min, nrm_max = torch.tensor(args.nrm_min, dtype=torch.float32, device='cuda'), torch.tensor(args.nrm_max, dtype=torch.float32, device='cuda')
-    nrm_t = get_template_normal()  # (512, 512, 3)
+    nrm_t = get_template_normal(h=args.uv_res, w=args.uv_res)  # (512, 512, 3)
 
     # Main training loop
     for step in tqdm(range(args.n_iter + 1)):
