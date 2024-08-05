@@ -22,10 +22,11 @@ from nvdiff_render.obj import *
 from utils import *
 from dc_pbr import skip
 from sd import StableDiffusion
+from smplx import SMPL
 
 glctx = dr.RasterizeCudaContext()
 OBJECT_PATH = './data'
-
+SMPL_PATH = './smpl'
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -120,25 +121,62 @@ def compute_sd_step(min, max, iter_frac):
     return step
 
 
+def get_posed_body_mesh(args, smpl_params, device):
+    # Define pose and shape parameters
+    # betas = torch.tensor(smpl_params['betas'], device=device)[None,...]  # [1, 10]
+    # trans = torch.tensor(smpl_params['trans'], device=device)[None, ...]  # [1, 3]
+    pose = torch.tensor(smpl_params['pose'], device=device)[None, ...] # [1, 72], including global orient
+    global_orient = pose[:, :3]
+    # body_pose = pose[:, 3:]
+    smpld_verts = torch.tensor(smpl_params['smpld_v'], device=device, dtype=torch.float32)[None, ...]  # [1, 6890, 3]
+
+    # Get body mesh: vertices and faces
+    smpl = SMPL(model_path=SMPL_PATH, ext='pkl', use_pca=False, num_betas=10).to(device)
+    joints = torch.einsum('jv,bvk->bjk', smpl.J_regressor, smpld_verts)  # [1, 24, 3]
+    smpld_verts = smpld_verts.detach()
+    face_verts = smpld_verts - (joints[:, 15, :] + torch.tensor([0.0, 0.05, 0.0], device=device))
+    body_verts = smpld_verts - joints[:, 0, :]
+    smpl_faces = torch.tensor((smpl.faces.astype(np.int64)), device=device)  # [20908, 3]
+
+    rect_mat = torch.linalg.inv(axis_angle_to_matrix(global_orient)).to(torch.float32)
+    face_verts = torch.einsum('bvn,bmn->bvm', face_verts, rect_mat)
+    body_verts = torch.einsum('bvn,bmn->bvm', body_verts, rect_mat)
+
+    return body_verts.squeeze(0), face_verts.squeeze(0), smpl_faces
+
+
 def main(args, guidance):
     exp_name = time.strftime('%Y%m%d', time.localtime()) + '_' + args.exp_name
     output_dir = os.path.join('./logs', exp_name)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     # seed_all(args)
 
-    # Get text prompt and tokenize it
+    # Get text prompt and tokenize it (and save it)
     sd_prompt = ", ".join(
         (f"a DSLR photo of {args.identity}", "best quality, high quality, extremely detailed, good geometry"))
+    sd_prompt_face = ", ".join(
+        (f"a DSLR photo of a face of {args.identity}", "best quality, high quality, extremely detailed, good geometry"))
 
-    # load obj and read uv information
-    args.obj_path = os.path.join(OBJECT_PATH, args.objaverse_id, 'mesh.obj')
-    obj_f_uv, obj_v_uv, obj_f, obj_v = load_obj_uv(obj_path=args.obj_path, device=device)
+    # load smpl parameters for human meshes
+    # if you don't have smpl parameters for human meshes, try using https://github.com/bharat-b7/RVH_Mesh_Registration
+    smpl_params = np.load(os.path.join(OBJECT_PATH, args.obj_id, args.obj_id + '_param.npz'))
 
-    # initialize template mesh
-    mesh_t = Mesh(obj_v, obj_f, v_tex=obj_v_uv, t_tex_idx=obj_f_uv)
+    body_v, face_v, smpl_f = get_posed_body_mesh(args, smpl_params, device)
+
+    # load smplx obj and read uv information
+    smpl_f_uv, smpl_v_uv = load_smpl_uv(device)
+
+    # initialize body mesh
+    mesh_t = Mesh(body_v, smpl_f, v_tex=smpl_v_uv, t_tex_idx=smpl_f_uv)
     mesh_t = unit_size(mesh_t)
     mesh_t = auto_normals(mesh_t)
     mesh_t = compute_tangents(mesh_t)
+
+    # initialize face mesh
+    mesh_f = Mesh(face_v, smpl_f, v_tex=smpl_v_uv, t_tex_idx=smpl_f_uv)
+    mesh_f = auto_normals(mesh_f)
+    mesh_f = compute_tangents(mesh_f)
+
 
     input_uv_ = torch.randn((3, args.uv_res, args.uv_res), device=device)
 
@@ -151,13 +189,20 @@ def main(args, guidance):
     net, lgt, optim, activate_scheduler, lr_scheduler = get_model(args)
 
     # get text embedding
-    neg_prompt = 'deformed, extra digit, fewer digits, cropped, worst quality, low quality, smoke'
+    neg_b_prompt = 'lowres, deformed, bad anatomy, blurry, extra digit, fewer digits, cropped, worst quality, low quality, smoke'
+    neg_f_prompt = 'lowres, deformed, bad anatomy, blurry, extra digit, fewer digits, cropped, worst quality, low quality, smoke'
+
     text_z = []
 
     for d in ['front', 'side', 'back', 'overhead']:
         # construct dir-encoded text
-        text_z.append(guidance.get_text_embeds([f"{sd_prompt}, {d} view"], [neg_prompt], 1))
+        text_z.append(guidance.get_text_embeds([f"{sd_prompt}, {d} view"], [neg_b_prompt], 1))
     text_z = torch.stack(text_z, dim=0)
+
+    text_z_face = []
+    for d in ['front', 'side', 'overhead']:
+        text_z_face.append(guidance.get_text_embeds([f"{sd_prompt_face}, {d} view"], [neg_f_prompt], 1))
+    text_z_face = torch.stack(text_z_face, dim=0)
 
     kd_min, kd_max = torch.tensor(args.kd_min, dtype=torch.float32, device='cuda'), torch.tensor(args.kd_max, dtype=torch.float32, device='cuda')
     ks_min, ks_max = torch.tensor(args.ks_min, dtype=torch.float32, device='cuda'), torch.tensor(args.ks_max, dtype=torch.float32, device='cuda')
@@ -173,6 +218,7 @@ def main(args, guidance):
         lgt.build_mips()
         with torch.no_grad():
             mesh = copy.deepcopy(mesh_t)
+            face_mesh = copy.deepcopy(mesh_f)
 
         net_output = net(network_input)  # [B, 9, H, W]
         pred_tex = net_output.permute(0, 2, 3, 1)
@@ -192,19 +238,16 @@ def main(args, guidance):
 
         mesh.material = pred_material
 
-        cam = sample_view_obj(args.n_view, cam_radius=3.25)
+        cam = sample_view_human(args.n_view, cam_radius=2.75)
         buffers = render_mesh(glctx, mesh, cam['mvp'], cam['campos'], lgt, cam['resolution'],
                               spp=cam['spp'], msaa=True, background=None, bsdf='pbr')
-        pred_obj_rgb = buffers['shaded'][..., 0:3].permute(0, 3, 1, 2).contiguous()
-        pred_obj_ws = buffers['shaded'][..., 3].unsqueeze(1)  # [B, 1, H, W]
-        obj_image = pred_obj_rgb * pred_obj_ws + (1 - pred_obj_ws) * args.bg
+        pred_body_rgb = buffers['shaded'][..., 0:3].permute(0, 3, 1, 2).contiguous()
+        pred_body_ws = buffers['shaded'][..., 3].unsqueeze(1)  # [B, 1, H, W]
+        body_image = pred_body_rgb * pred_body_ws + (1 - pred_body_ws) * args.bg
 
         # SDS losses
         all_pos, all_neg = [], []
-        #
         text_z_iter = text_z[cam['direction']]
-        #
-        #
         for emb in text_z_iter:  # list of [2, S, -1]
             pos, neg = emb.chunk(2)  # [1, S, -1]
             all_pos.append(pos)
@@ -213,12 +256,34 @@ def main(args, guidance):
 
         sd_min_step = compute_sd_step(args.sd_min_l, args.sd_min_r, cur_iter_frac)
         sd_max_step = compute_sd_step(args.sd_max_l, args.sd_max_r, cur_iter_frac)
-
+        #
         # # compute sds_loss for the body
-        sd_loss = guidance.batch_train_step(text_embedding, obj_image,
+        sd_loss = guidance.batch_train_step(text_embedding, body_image,
                                             guidance_scale=args.gd_scale,
                                             min_step=sd_min_step,
                                             max_step=sd_max_step)
+
+        face_mesh.material = pred_material
+        cam_face = sample_view_human(args.n_view, cam_radius=0.4, is_face=True)
+        face_buffers = render_mesh(glctx, face_mesh, cam_face['mvp'], cam_face['campos'], lgt,
+                                   cam_face['resolution'],
+                                   spp=cam_face['spp'], msaa=True, background=None, bsdf='pbr')
+        pred_face_rgb = face_buffers['shaded'][..., 0:3].permute(0, 3, 1, 2).contiguous()
+        pred_face_ws = face_buffers['shaded'][..., 3].unsqueeze(1)  # [B, 1, H, W]
+        face_image = pred_face_rgb * pred_face_ws + (1 - pred_face_ws) * args.bg
+
+        all_pos_face, all_neg_face = [], []
+        text_z_face_iter = text_z_face[cam_face['direction']]
+        for emb_face in text_z_face_iter:  # list of [2, S, -1]
+            pos_face, neg_face = emb_face.chunk(2)  # [1, S, -1]
+            all_pos_face.append(pos_face)
+            all_neg_face.append(neg_face)
+        text_embedding_face = torch.cat(all_pos_face + all_neg_face, dim=0)  # [2b, S, -1]
+
+        sd_loss += guidance.batch_train_step(text_embedding_face, face_image,
+                                             guidance_scale=args.gd_scale,
+                                             min_step=sd_min_step,
+                                             max_step=sd_max_step)
 
         total_loss = sd_loss
         losses['L_sds'] = sd_loss.item()
@@ -233,7 +298,8 @@ def main(args, guidance):
                 report_process(step, losses, exp_name)
                 mtl_file = os.path.join(output_dir, 'mesh.mtl')
                 save_mtl(mtl_file, mesh.material, step=step)
-                torchvision.utils.save_image(obj_image[0], os.path.join(output_dir, f'obj_{step:04}.jpg'))
+                torchvision.utils.save_image(body_image[0], os.path.join(output_dir, f'body_{step:04}.jpg'))
+                torchvision.utils.save_image(face_image[0], os.path.join(output_dir, f'face_{step:04}.jpg'))
 
     with torch.no_grad():
         #
@@ -245,65 +311,54 @@ def main(args, guidance):
         final_ks = final_tex[..., -6:-3]
         final_n = F.normalize((final_tex[..., -3:] * 2.0 - 1.0) + nrm_t, dim=-1)
         circle_n_view = 120
+        final_cam = sample_circle_view(n_view=circle_n_view, cam_radius=2.75, elev=0.0)
 
-        for elev in [-np.pi / 4, 0.0]:
-            final_cam = sample_circle_view(n_view=circle_n_view, elev=elev, cam_radius=3.25)
+        final_material = Material({
+            'bsdf': 'pbr',
+            'kd': Texture2D(final_kd, min_max=[kd_min, kd_max]),
+            'ks': Texture2D(final_ks, min_max=[ks_min, ks_max]),
+            'normal': Texture2D(final_n, min_max=[nrm_min, nrm_max])
+        })
+        final_material['kd'].clamp_()
+        final_material['ks'].clamp_()
+        final_material['normal'].clamp_()
+        vis_mesh.material = final_material
 
-            final_material = Material({
-                'bsdf': 'pbr',
-                'kd': Texture2D(final_kd, min_max=[kd_min, kd_max]),
-                'ks': Texture2D(final_ks, min_max=[ks_min, ks_max]),
-                'normal': Texture2D(final_n, min_max=[nrm_min, nrm_max])
-            })
-            final_material['kd'].clamp_()
-            final_material['ks'].clamp_()
-            final_material['normal'].clamp_()
-            vis_mesh.material = final_material
+        write_obj(output_dir, vis_mesh)
 
-            write_obj(output_dir, vis_mesh)
+        final_lgt = lgt
+        final_buffers = render_mesh(glctx, vis_mesh, final_cam['mvp'], final_cam['campos'], final_lgt,
+                                    final_cam['resolution'], spp=final_cam['spp'], msaa=True, background=None, bsdf='pbr')
 
-            final_lgt = lgt
-            final_buffers = render_mesh(glctx, vis_mesh, final_cam['mvp'], final_cam['campos'], final_lgt,
-                                        final_cam['resolution'], spp=final_cam['spp'], msaa=True, background=None,
-                                        bsdf='pbr')
-
-            final_obj_rgb = final_buffers['shaded'][..., 0:3].permute(0, 3, 1, 2).contiguous()
-            final_obj_ws = final_buffers['shaded'][..., 3].unsqueeze(1)  # [B, 1, H, W]
-            vis_mesh_img = final_obj_rgb * final_obj_ws + (1 - final_obj_ws) * 1  # white bg, float32, [B, 3, H, W]
-
-            # # save final front body image
-            if elev == 0.0:
-                os.makedirs(os.path.join(output_dir, 'view_front'), exist_ok=True)
-            else:
-                os.makedirs(os.path.join(output_dir, 'view_top'), exist_ok=True)
-            for idx in range(circle_n_view):
-                if idx == 0:
-                    if elev == 0.0:
-                        torchvision.utils.save_image(final_obj_rgb[idx], os.path.join(output_dir, "final_front.png"))
-                    else:
-                        torchvision.utils.save_image(final_obj_rgb[idx], os.path.join(output_dir, "final_top.png"))
-                if elev == 0.0:
-                    torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, 'view_front', f'{idx:04}.png'))
-                else:
-                    torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, 'view_top', f'{idx:04}.png'))
+        final_body_rgb = final_buffers['shaded'][..., 0:3].permute(0, 3, 1, 2).contiguous()
+        final_body_ws = final_buffers['shaded'][..., 3].unsqueeze(1)  # [B, 1, H, W]
+        vis_mesh_img = final_body_rgb * final_body_ws + (1 - final_body_ws) * 1  # white bg, float32, [B, 3, H, W]
+        #
+        # save final front body image
+        os.makedirs(os.path.join(output_dir, 'view'), exist_ok=True)
+        for idx in range(circle_n_view):
+            if idx == 0:
+                torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, f"final_body.png"))
+            torchvision.utils.save_image(vis_mesh_img[idx], os.path.join(output_dir, 'view', f'{idx:04}.png'))
 
 
 if __name__ == '__main__':
     args = parse_args()
 
     mesh_dicts = {
-        '9ce8ab24383c4c93b4c1c7c3848abc52': 'a pretzel',
+        'smpld_example': 'an old man wearing a black sportswear',
     }
 
-    # load stable-diffusion model
     guidance = StableDiffusion(device, min=args.sd_min, max=args.sd_max)
     guidance.eval()
     for p in guidance.parameters():
         p.requires_grad = False
 
-    # iterate through the renderpeople items
+    # orig
     for obj_id, caption in mesh_dicts.items():
-        args.exp_name = '_'.join((caption.split(' ')[1:] + [obj_id[:6]]))
-        args.objaverse_id = obj_id
+        args.exp_name = '_'.join(caption.split(' '))
+        args.obj_id = obj_id
         args.identity = caption
         main(args, guidance)
+
+

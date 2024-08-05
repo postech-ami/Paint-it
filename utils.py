@@ -12,7 +12,7 @@ downsampler_512 = T.Resize((512, 512))
 tensor_to_img = T.ToPILImage()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+SMPL_UV_OBJ_PATH = './data/smpl_uv.obj'
 
 def sample_view_obj(n_view, cam_radius, res=[512, 512], cam_near_far=[0.1, 1000.0], spp=1, is_face=False):
     iter_res = res
@@ -49,6 +49,67 @@ def sample_view_obj(n_view, cam_radius, res=[512, 512], cam_near_far=[0.1, 1000.
         #     direction = 1
         # else:
         #     direction = 0
+
+        mv = util.translate(0, 0, -cam_radius) @ (util.rotate_x(angle_x) @ util.rotate_y(angle_y))
+        mvp = proj_mtx @ mv
+        campos = torch.linalg.inv(mv)[:3, 3]
+        mv_list.append(mv[None, ...].cuda())
+        mvp_list.append(mvp[None, ...].cuda())
+        campos_list.append(campos[None, ...].cuda())
+        direction_list.append(direction)
+
+    cam = {
+        'mv': torch.cat(mv_list, dim=0),
+        'mvp': torch.cat(mvp_list, dim=0),
+        'campos': torch.cat(campos_list, dim=0),
+        'direction': np.array(direction_list, dtype=np.int32),
+        'resolution': iter_res,
+        'spp': spp
+    }
+    return cam
+
+
+def sample_view_human(n_view, cam_radius, res=[512, 512], cam_near_far=[0.1, 1000.0], spp=1, is_face=False):
+    iter_res = res
+    fovy = np.deg2rad(45)
+    proj_mtx = util.perspective(fovy, iter_res[1] / iter_res[0], cam_near_far[0], cam_near_far[1])
+
+    # ==============================================================================================
+    #  Random camera & light position
+    # ==============================================================================================
+
+    # Random rotation/translation matrix for optimization.
+    mv_list, mvp_list, campos_list, direction_list = [], [], [], []
+    for view_i in range(n_view):
+        if is_face:
+            angle_x = np.random.uniform(-np.pi / 3, np.pi / 6)
+            angle_y = np.random.uniform(-np.pi / 2, np.pi / 2)
+        else:
+            angle_x = np.random.uniform(-np.pi / 3, np.pi / 3)
+            angle_y = np.random.uniform(0, 2 * np.pi)
+
+        # direction
+        # 0 = front, 1 = side, 2 = back, 3 = overhead
+        if not is_face:
+            if angle_x < -np.pi / 4:
+                direction = 3
+            else:
+                if angle_y >= 0 and angle_y <= np.pi / 8 or angle_y > 15 * np.pi / 8:
+                    direction = 0
+                elif angle_y > np.pi / 8 and angle_y <= 7 * np.pi / 8:
+                    direction = 1
+                elif angle_y > 7 * np.pi / 8 and angle_y <= 9 * np.pi / 8:
+                    direction = 2
+                elif angle_y > 9 * np.pi / 8 and angle_y <= 15 * np.pi / 8:
+                    direction = 1
+        else:
+            if angle_x < -np.pi / 4:
+                direction = 2
+            else:
+                if -np.pi / 8 <= angle_y < np.pi / 8:
+                    direction = 0
+                else:
+                    direction = 1
 
         mv = util.translate(0, 0, -cam_radius) @ (util.rotate_x(angle_x) @ util.rotate_y(angle_y))
         mvp = proj_mtx @ mv
@@ -155,5 +216,11 @@ def load_obj_uv(obj_path, device):
     vt = torch.cat((vt[:, [0]], 1.0 - vt[:, [1]]), dim=1)
     return ft, vt, face.verts_idx, vert
 
-
+def load_smpl_uv(device):
+    # smpl
+    vert, face, aux = load_obj(SMPL_UV_OBJ_PATH, device=device)
+    vt = aux.verts_uvs
+    ft = face.textures_idx
+    vt = torch.cat((vt[:, [0]], 1.0 - vt[:, [1]]), dim=1)
+    return ft, vt
 

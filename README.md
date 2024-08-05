@@ -48,7 +48,7 @@ To download a subset of Objaverse, you can refer to the scripts provided [here](
 
 
 ### Generate PBR texture maps for 3D mesh
-Given a 3D mesh in `.obj` format and the text prompt, you can run below code to generate PBR texture maps.
+Given a 3D mesh in `.obj` format and the text prompt, you can run below command to generate PBR texture maps.
 ```
 # Generate PBR textures for .obj meshes
 python paint_it.py
@@ -64,9 +64,32 @@ mesh_dicts = {
 }
 ```
 
+### Generate PBR texture maps for 3D human mesh
+Before you proceed, you need to download SMPL related materials. Get yourself registered and download the relevant files from [SMPL webpage](https://smpl.is.tue.mpg.de/index.html). 
+1. **SMPL neutral model in `.pkl` format**  
+
+   You can find `Download version 1.1.0 for Python 2.7 (female/male/neutral, 300 shape PCs)`. 
+   Rename the downloaded `basicmodel_neutral_lbs_10_207_0_v1.1.0.pkl` into `SMPL_NEUTRAL.pkl` and place it under `./smpl` directory.
+
+2. **SMPL UV map in `.obj` format**
+   
+   You can find `Download UV map in OBJ format`.
+   Move the downloaded `smpl_uv.obj` into `./data` directory.
+
+
+Given a 3D human mesh in SMPL parameter `.npz` format and text prompt, you can run below command to generate PBR texture maps.
+The example `.npz` file is located under `./data/smpld_example`.
+```
+# Generate PBR textures for 3D human meshes
+python paint_it_human.py
+```
+
+If you have 3D human scans (e.g., RenderPeople), but don't have smpl parameters for human meshes, try using [this mesh registration tool](https://github.com/bharat-b7/RVH_Mesh_Registration).
+
+
 ### Coming soon
 - [x] Code release for general 3D object meshes (Objaverse)
-- [ ] Code release for 3D human meshes
+- [x] Code release for 3D human meshes
 - [ ] Improved diffusion guidance (VSD, Stable-Diffusion XL, ControlNet-Depth, etc...)
 
 ## Citation
