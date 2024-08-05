@@ -38,7 +38,7 @@ pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.co
 
 pip install git+https://github.com/NVlabs/nvdiffrast/
 pip install diffusers==0.12.1 huggingface-hub==0.11.1 transformers==4.21.1 sentence-transformers==2.2.2
-pip install PyOpenGL PyOpenGL_accelerate accelerate rich ninja scipy trimesh imageio matplotlib chumpy opencv-python
+pip install PyOpenGL PyOpenGL_accelerate accelerate rich ninja scipy trimesh imageio matplotlib chumpy opencv-python smplx
 pip install numpy==1.23.1
 ```
 
