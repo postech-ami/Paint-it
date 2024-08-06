@@ -87,11 +87,6 @@ python paint_it_human.py
 If you have 3D human scans (e.g., RenderPeople), but don't have smpl parameters for human meshes, try using [this mesh registration tool](https://github.com/bharat-b7/RVH_Mesh_Registration).
 
 
-### Coming soon
-- [x] Code release for general 3D object meshes (Objaverse)
-- [x] Code release for 3D human meshes
-- [ ] Improved diffusion guidance (VSD, Stable-Diffusion XL, ControlNet-Depth, etc...)
-
 ## Citation
 If you find our code or paper helps, please consider citing:
 ````BibTeX
